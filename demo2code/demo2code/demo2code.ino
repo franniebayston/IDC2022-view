@@ -40,6 +40,7 @@ int totalHash = -1;
 
 // Store mission5 (cold) Hash
 int missionHash = -1;
+int doPrimary = -1;
 
 //
 // 1. FUNCTION DECLARATION
@@ -57,7 +58,7 @@ void check_stop(int, int);
 void set_RGB(int, int, int);
 void hash_RGB(int, int);
 
-void mission5(int, int);
+void mission5();
 
 void backupmission();
 float microsecondsToInches(long microseconds);
@@ -94,7 +95,7 @@ void setup() {
   // PRIMARY OR BACKUP?? Boolean
   // True or False Wire at pin 5
   //
-  doPrimary = digitalRead(5) ? 1 : 0 // Sets doPriamry to true if pin 5 is wired.
+  doPrimary = digitalRead(5) ? 1 : 0; // Sets doPriamry to true if pin 5 is wired.
   Serial.println("doPrimary boolean set.");
   Serial.println(doPrimary);
 
@@ -123,7 +124,7 @@ void setup() {
   // Ultrasound
   //
   if (!doPrimary) {
-    totalHash = 6
+    totalHash = 6;
     
     pinMode(37, OUTPUT);
     pinMode(39, OUTPUT);
@@ -158,9 +159,9 @@ void loop() {
   //
   // Backup Mission Initialization
   //
-  if (!doPrimary) {
-    float backup_array[6];
-  }
+  
+  float backup_array[6];
+  
 
   //
   // FUNCTION CALLS by STATE
@@ -190,13 +191,13 @@ void loop() {
       
       else { // BACKUP
         // flash LED to show we doing stuff
-        analogWrite(redpin, 255);
-        analogWrite(greenpin, 0);
-        analogWrite(bluepin, 255);
+        analogWrite(r, 255);
+        analogWrite(g, 0);
+        analogWrite(b, 255);
         delay(500);
-        analogWrite(redpin, 255);
-        analogWrite(greenpin, 255);
-        analogWrite(bluepin, 255);
+        analogWrite(r, 255);
+        analogWrite(g, 255);
+        analogWrite(b, 255);
         delay(1500); 
         
         if (currentHash <= (totalHash-2)) {
@@ -206,24 +207,25 @@ void loop() {
         else if (currentHash == (totalHash-1)) {
             check_stop(1, 1); // Always True
             
-            float smallest = array[0];
+            float smallest = backup_array[0];
             int missionHash = 0;
 
             for (int i = 0; i < 6; i++) {
-              if (array[i] < smallest) {
-                smallest = array[i];
+              if (backup_array[i] < smallest) {
+                smallest = backup_array[i];
                 missionHash = i;
               }
             }
         Serial2.print(missionHash + 1);
         Serial.println("Found missionHash.");
         Serial.println(missionHash + 1);
+        }
         else {
           Serial.print("Backup done. missionHash found.");
         }
       }
       
-      }
+      
       break;
 
       
