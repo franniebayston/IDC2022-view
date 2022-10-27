@@ -22,6 +22,13 @@ IRTherm therm;
 #define lineSensor2 51
 #define lineSensor3 53
 
+// Backup (Ultrasound)
+const int pingPin = 35;
+
+// Backup ???
+# define Tx 16
+# define num 17
+
 // RGB 
 #define r 45
 #define g 46
@@ -31,7 +38,7 @@ IRTherm therm;
 int currentHash = -1;
 int totalHash = -1;
 
-// Store missionHash
+// Store mission5 (cold) Hash
 int missionHash = -1;
 
 //
@@ -51,6 +58,11 @@ void set_RGB(int, int, int);
 void hash_RGB(int, int);
 
 void mission5(int, int);
+
+void backupmission();
+float microsecondsToInches(long microseconds);
+float microsecondsToCentimeters(long microseconds);
+float distance_in_inches();
 
 
 //
@@ -79,9 +91,19 @@ void setup() {
   analogWrite(g, 255);
   Serial.println("RGB on-board set up.");
 
+  // PRIMARY OR BACKUP?? Boolean
+  // True or False Wire at pin 5
+  //
+  doPrimary = digitalRead(5) ? 1 : 0 // Sets doPriamry to true if pin 5 is wired.
+  Serial.println("doPrimary boolean set.");
+  Serial.println(doPrimary);
+
+
   // PRIMARY MISSION 5
   // 5 or 6 Hashmark Wire
   //
+  if (doPrimary)
+  {
   pinMode(6, INPUT); // Uses pin 6 as the "switch"
   totalHash = digitalRead(6) ? 6 : 5;  // Sets the total Hashes to 6 if wired.
   Serial.println("Hashmark total set up.");
@@ -95,6 +117,18 @@ void setup() {
   therm.begin();
   Serial.println("IR Part 2/2 set up.");
   therm.setUnit(TEMP_F); // Set the library's units to Farenheit (sic)
+  }
+
+  // BACKUP MISSION
+  // Ultrasound
+  //
+  if (!doPrimary) {
+    totalHash = 6
+    
+    pinMode(37, OUTPUT);
+    pinMode(39, OUTPUT);
+    digitalWrite(37, HIGH);
+    digitalWrite(39, LOW);
   }
 
   pinMode(LED_BUILTIN, OUTPUT); // LED pin as output
@@ -122,6 +156,13 @@ void loop() {
 //  Serial.println();
 
   //
+  // Backup Mission Initialization
+  //
+  if (!doPrimary) {
+    float backup_array[6];
+  }
+
+  //
   // FUNCTION CALLS by STATE
   //
   switch (state)
@@ -137,14 +178,52 @@ void loop() {
       //
       // MISSION 5
       //
-      if (currentHash <= (totalHash-1)) {
+      if (doPrimary) {
+        if (currentHash <= (totalHash-1)) {
           mission5();
+        }
+        // Stop moving at Last Hash
+        check_stop(totalHash-1, currentHash);
+        // Keep moving if not Last Hash
+        moveForward(200);
       }
-      // Stop moving at Last Hash
-      check_stop(totalHash-1, currentHash);
-      // Keep moving if not Last Hash
-      moveForward(200);
-     
+      
+      else { // BACKUP
+        // flash LED to show we doing stuff
+        analogWrite(redpin, 255);
+        analogWrite(greenpin, 0);
+        analogWrite(bluepin, 255);
+        delay(500);
+        analogWrite(redpin, 255);
+        analogWrite(greenpin, 255);
+        analogWrite(bluepin, 255);
+        delay(1500); 
+        
+        if (currentHash <= (totalHash-2)) {
+          backup_array[currentHash] = distance_in_inches();
+          moveForward(200);
+        }
+        else if (currentHash == (totalHash-1)) {
+            check_stop(1, 1); // Always True
+            
+            float smallest = array[0];
+            int missionHash = 0;
+
+            for (int i = 0; i < 6; i++) {
+              if (array[i] < smallest) {
+                smallest = array[i];
+                missionHash = i;
+              }
+            }
+        Serial2.print(missionHash + 1);
+        Serial.println("Found missionHash.");
+        Serial.println(missionHash + 1);
+        else {
+          Serial.print("Backup done. missionHash found.");
+        }
+      }
+      
+      }
       break;
 
       
@@ -354,3 +433,52 @@ void mission5() {
   Serial.println("F");
   Serial.println();
   }
+
+
+float microsecondsToInches(long microseconds) {
+  // The speed of sound is about 1125 ft/s
+  // Sound takes about 74.074 us to travel 1 in
+  return microseconds / 74.074 / 2;
+}
+
+float microsecondsToCentimeters(long microseconds) {
+  // The speed of sound is about 343 m/s
+  // Sound takes about 29.155 us to travel 1 cm
+  return microseconds / 29.155 / 2.0;
+}
+
+float distance_in_inches(){
+      long duration;
+      float inches, cm;
+      // short LOW pulse to ensure a clean HIGH pulse:
+      pinMode(pingPin, OUTPUT);
+      digitalWrite(pingPin, LOW);
+      // 2 ms HIGH pulse
+      delayMicroseconds(2);
+      digitalWrite(pingPin, HIGH);
+      // back to LOW
+      delayMicroseconds(5);
+      digitalWrite(pingPin, LOW);
+
+      // The same pin is used to read the signal from thPINGe ))): 
+      // a HIGH pulse whose duration is the time (in microseconds) 
+      // from the sending of the ping to the reception of 
+      // its echo off of an object.
+      pinMode(pingPin, INPUT);
+      duration = pulseIn(pingPin, HIGH);
+
+      // convert the time into a distance
+      inches = microsecondsToInches(duration);
+      cm = microsecondsToCentimeters(duration);
+  
+      Serial.print(inches);
+      Serial.print("in, ");
+      Serial.print(cm);
+      Serial.print("cm");
+      Serial.println();
+
+      return inches;
+}
+
+
+  
