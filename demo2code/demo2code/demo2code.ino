@@ -2,9 +2,6 @@
 // 0. IMPORT LIBRARIES
 //
 
-// OUR ASCII VALUE STARTS AT  85 (U)
-# define groupCharShift 84
-
 // Servos
 #include <Servo.h>
 Servo servoLeft;
@@ -12,8 +9,8 @@ Servo servoRight;
 
 // LCD
 #include <SoftwareSerial.h>
-#define LCDPin 7
-SoftwareSerial mySerial = SoftwareSerial(255, LCDPin);
+#define TxPin 14
+SoftwareSerial mySerial = SoftwareSerial(255, TxPin);
 
 // IR Sensor
 #include <Wire.h> // I2C library, required for MLX90614
@@ -50,10 +47,12 @@ int Reading = 0;
 
 // Arrays
 int group_scores[] = { -1, -1, -1, -1, -1};
-int printed[] = {0, 0, 0, 0, 0};
-int group_sum = 0;
+int printed[] = {0, 0, 0, 0, 1};
+int groupSum = 0;
 
 int getSum = 0;
+
+int amtCounter = 0;
 
 
 
@@ -80,6 +79,9 @@ float microsecondsToInches(long);
 float microsecondsToCentimeters(long);
 float distance_in_inches();
 
+int getGroupScore(int);
+int getGroupNum(int);
+
 void showScore(int, int);
 void showSum(int);
 void showMod(int);
@@ -91,17 +93,22 @@ void lightInd();
 // 2. INITIALIZE SENSORS and SERIAL
 //
 void setup() {
-
+//  Serial.begin(9600);
+  Serial1.begin(9600);
   // Initialize Serials (XBee and LCD)
-  pinMode(LCDPin, OUTPUT);
-  digitalWrite(LCDPin, HIGH);
-  Serial.begin(9600); //start the serial monitor so we can view the output
+//  pinMode(TxPin, OUTPUT);
+//  digitalWrite(TxPin, HIGH);
+  mySerial.begin(9600); //start the serial monitor so we can view the output
   delay(100);
   mySerial.write(12); // clears LCD
-  delay(5);
+  delay(10);
+  mySerial.write(22);
+  delay(10);
   mySerial.write(17);
-  digitalWrite(LCDPin, LOW);
-  delay(100);
+  delay(10);
+//  
+//  digitalWrite(TxPin, LOW);
+//  delay(100);
 
   Serial2.begin(9600);
   delay(500);
@@ -167,6 +174,10 @@ void setup() {
   digitalWrite(LED_BUILTIN, HIGH);
   delay(1000);
 
+  // Final sanity check
+  mySerial.write(12);
+  delay(1000);
+
 }
 
 void loop() {
@@ -201,57 +212,74 @@ void loop() {
   {
     case 0: // ON HASHMARK
       currentHash++;
-      Serial.println("Current Hash:");
-      Serial.println(currentHash);
+      //      Serial.println("Current Hash:");
+      //      Serial.println(currentHash);
       halt(250);
 
       // continuous loop that just focuses on reading the incoming data
       while ((currentHash > (totalHash - 1)) && (Reading)) {
+        showScore(5, missionHash + 1);
 
         lightInd();
-        
-        if (Serial2.available()) {
-          char rawChar = Serial2.read();
-          delay(100);
+        if (amtCounter % 100 == 0) {
+          if (Serial2.available()) {
+            Serial2.print((char) (missionHash + 1 + 84));
+          }
+          delay(500);
         }
+        else {
 
-        
-        // expect a meaningful char to be 65 ASCII or greater
-        if (rawChar >= 65) {
-          lightInd();
+          if (Serial2.available()) {
+          int rawChar = Serial2.read();
+          set_RGB(255, 0, 255);
+          delay(500);
+          Serial.println(rawChar);
+          
+          // expect a meaningful char to be 65 ASCII or greater
+          
+//          lightInd();
+//          delay(100);
           int temp_group = getGroupNum(rawChar);
           int temp_score = getGroupScore(rawChar);
+        
+          showScore(temp_group, temp_score);
 
-          group_scores[temp_group] = temp_score;
+          set_RGB(0,0,0);
+//
+//          // update to array.
+//          group_scores[temp_group] = temp_score;
+//
+//          if ((printed[temp_group] == 0) && (temp_score != -1)) {
+//            showScore(temp_group, temp_score);
+//            printed[temp_group] = 1;
+//          }
+//          
+//        }
+//        // check if sum can be calculated (assumes break works)
+//
+//        for (int i = 0; i <= 4; i++) {
+//          if (group_scores[i] == -1) {
+//            getSum = 0;
+//            groupSum = 0;
+//            break;
+//          }
+//          else {
+//            groupSum += group_scores[i];
+//            getSum = 1;
+//          }
+//        }
+//
+//        if (getSum) {
+//          Reading = 0;
+//          showSum(groupSum);
+//          delay(100);
+//        }
 
-          if ((printed[temp_group] == 0) && (temp_score != -1)) {
-            showScore(temp_group, temp_score);
-            printed[temp_group] = 1;
-          }
-        }
-
-        // check if sum can be calculated (assumes break works)
-
-        for (int i = 0; i <= 4; i++) {
-          if (group_scores[i] == -1) {
-            getSum = 0;
-            groupSum = 0;
-            break;
-          }
-          else {
-            groupSum += group_scores[i];
-            getSum = 1;
-          }
-        }
-
-        if (getSum) {
-          Reading = 0;
-          showSum(groupSum);
-          delay(100);
-        }
 
 
-
+      }
+      }
+      amtCounter +=1;
       }
 
       //
@@ -276,7 +304,7 @@ void loop() {
         analogWrite(r, 255);
         analogWrite(g, 255);
         analogWrite(b, 255);
-        delay(1500);
+        delay(1000);
 
         if (currentHash <= (totalHash - 2)) {
           backup_array[currentHash] = distance_in_inches();
@@ -296,12 +324,19 @@ void loop() {
           }
 
           lightInd();
-          Serial2.print(missionHash + 1);
-          Serial.println("Found missionHash.");
-          Serial.println(missionHash + 1);
+          
+          Serial2.print((char) (missionHash + 1 + 84));
+          
+          delay(500);
+          
+          group_scores[4] = (missionHash + 1 + 84);
+     
+
+          //          Serial.println("Found missionHash.");
+          //          Serial.println(missionHash + 1);
         }
         else {
-          Serial.print("Backup done. missionHash found.");
+          //          Serial.print("Backup done. missionHash found.");
         }
       }
 
@@ -314,7 +349,6 @@ void loop() {
       break;
 
     case 2: // Highly unlikely
-      Serial.println("What the (switch)???");
       break;
 
 
@@ -351,6 +385,7 @@ void loop() {
 
   }
 }
+
 
 
 long rcTime(int pin) {
@@ -495,9 +530,11 @@ void mission5() {
       set_RGB(255, 255, 255); // turn on to show XBee communication
 
       // Communicate to XBee
-      Serial2.print(missionHash + 1 + groupCharShift);
-
-
+      
+      Serial2.print((char) (missionHash + 1 + 84));
+      
+      delay(100);
+      group_scores[4] = (missionHash + 1 + 84);
 
       delay(500);
       set_RGB(0, 0, 0);
@@ -514,11 +551,11 @@ void mission5() {
   digitalWrite(LED_BUILTIN, LOW);
 
   //
-  Serial.print("Object: " + String(therm.object(), 2));
-  Serial.println("F");
-  Serial.print("Ambient: " + String(therm.ambient(), 2));
-  Serial.println("F");
-  Serial.println();
+  //  Serial.print("Object: " + String(therm.object(), 2));
+  //  Serial.println("F");
+  //  Serial.print("Ambient: " + String(therm.ambient(), 2));
+  //  Serial.println("F");
+  //  Serial.println();
 }
 
 
@@ -558,21 +595,21 @@ float distance_in_inches() {
   inches = microsecondsToInches(duration);
   cm = microsecondsToCentimeters(duration);
 
-  Serial.print(inches);
-  Serial.print("in, ");
-  Serial.print(cm);
-  Serial.print("cm");
-  Serial.println();
+  //  Serial.print(inches);
+  //  Serial.print("in, ");
+  //  Serial.print(cm);
+  //  Serial.print("cm");
+  //  Serial.println();
 
   return inches;
 }
 
-int getGroupNum(char rawChar) {
+int getGroupNum(int rawChar) {
   int temp = ((((rawChar - 65) - ((rawChar - 65) % 5)) / 5) + 1);
   return temp;
 }
 
-int getGroupScore(char rawChar) {
+int getGroupScore(int rawChar) {
   int temp = ((rawChar % 5) + 1);
   return temp;
 }
@@ -638,37 +675,32 @@ void showScore(int group, int score) {
       mySerial.print(score);
 
       break;
-
-    default:
-
-      mySerial.println("Error in showScore");
-      break;
-
   }
+}
 
 
-  void showMod(int mod) {
-    mySerial.write(157);
-    mySerial.print("M=");
-    mySerial.print(mod);
-  }
+void showMod(int mod) {
+  mySerial.write(157);
+  mySerial.print("M=");
+  mySerial.print(mod);
+}
 
-  void showSum(int sum) {
-    mySerial.write(152);
-    mySerial.print("S=");
-    mySerial.print(sum);
-  }
+void showSum(int sum) {
+  mySerial.write(152);
+  mySerial.print("S=");
+  mySerial.print(sum);
+}
 
-  void lightInd() {
+void lightInd() {
 
-    // flash onboard
-    analogWrite(r, 255);
-    analogWrite(g, 0);
-    analogWrite(b, 255);
-    delay(500);
-    analogWrite(r, 255);
-    analogWrite(g, 255);
-    analogWrite(b, 255);
-    delay(500);
+  // flash onboard
+  analogWrite(r, 255);
+  analogWrite(g, 0);
+  analogWrite(b, 255);
+  delay(500);
+  analogWrite(r, 255);
+  analogWrite(g, 255);
+  analogWrite(b, 255);
+  delay(500);
 
-  }
+}
