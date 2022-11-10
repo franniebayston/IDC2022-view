@@ -48,6 +48,7 @@ int nonZero = 0;
 
 // Arrays
 int group_scores[] = {0, 0, 0, 0, 0};
+float backup_array[] = {100000, 100000, 100000, 100000, 100000, 100000};
 int sumScore = 0;
 int modScore = 0;
 int amtCounter = 0;
@@ -203,13 +204,6 @@ void loop() {
   //  Serial.println();
 
   //
-  // Backup Mission Initialization
-  //
-
-  float backup_array[6];
-
-
-  //
   // FUNCTION CALLS by STATE
   //
   switch (state)
@@ -319,11 +313,11 @@ void loop() {
           check_stop(1, 1); // Always True
           float smallest = backup_array[0];
 
-          missionHash = 1;
+          missionHash = 0;
           for (int i = 0; i <= 5; i++) {
             if (backup_array[i] < smallest) {
               smallest = backup_array[i];
-              missionHash = i + 1;
+              missionHash = i;
             }
           }
 
