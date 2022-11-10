@@ -46,19 +46,17 @@ int doPrimary = -1;
 int Reading = 0;
 
 // Arrays
-int group_scores[] = {3, 3, 3, 3, 3};
-//int printed[] = {0, 0, 0, 0, 1};
-int groupSum = 0;
-
-int getSum = 0;
+int group_scores[] = {0, 0, 0, 0, 0};
+int sumScore = 0;
+int modScore = 0;
 
 int amtCounter = 0;
 
-//SPEAKERSOUND 
-#define num 17
-int durs[num]  = {211, 211, 211, 210, 210, 211, 211, 211, 211, 211, 211, 211, 210, 210, 211, 211, 212};
-int octs[num]  = {215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215};
-int notes[num] = {220, 220, 220, 220, 220, 220, 225, 232, 220, 220, 220, 220, 220, 220, 220, 225, 232};
+// SPEAKER SOUND
+#define num 34
+int durs[num]  = {211, 211, 211, 210, 210, 211, 211, 211, 211, 211, 211, 211, 210, 210, 211, 211, 212, 211, 211, 211, 210, 210, 211, 211, 211, 211, 211, 211, 211, 210, 210, 211, 211, 212};
+int octs[num]  = {215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215};
+int notes[num] = {220, 220, 220, 220, 220, 220, 225, 232, 220, 220, 220, 220, 220, 220, 220, 225, 232, 220, 220, 220, 220, 220, 220, 225, 232, 220, 220, 220, 220, 220, 220, 220, 225, 232};
 
 
 //
@@ -221,23 +219,27 @@ void loop() {
       while ((currentHash > (totalHash - 1)) && Reading) {
         
         showScore(5, missionHash + 1); // Print our mission score
-        lightInd();
+        set_RGB(255, 0, 0); // initialize send
+        delay(100);
+        set_RGB(0,0,0);
         
         if (amtCounter % 100 == 0) {
-          
+          set_RGB(255, 0, 0); // red color when sending our value
           if (Serial2.available()) {
             Serial2.print((char) (missionHash + 1 + 84));
           }
           
           delay(500);
+          set_RGB(0,0,0);
         }
         
         else {
           
           if (Serial2.available()) {
             int rawChar = Serial2.read();
-            set_RGB(255, 0, 255);
+            set_RGB(100, 100, 100); // some color when reading a value
             delay(500);
+            set_RGB(0,0,0);
           
             int temp_group = getGroupNum(rawChar);
             int temp_score = getGroupScore(rawChar);
@@ -245,29 +247,35 @@ void loop() {
 
             // update to array.
             group_scores[temp_group] = temp_score;
-              
-            sumScore = group_scores[0] + group_scores[1] + group_scores[2] + group_scores[3] + group_scores[4];
-            modScore = sumScore%3;
-
-            showSum(sumScore);
-            showMod(modScore);
-
-            set_RGB(0,0,0);
             
           }
           // check if sum can be calculated (assumes break works)
 
-         if (amtCounter == 101) {
+         if (amtCounter >= 1000 || (group_scores[0] != 0 && group_scores[1] != 0 && group_scores[2] != 0 && group_scores[3] != 0 && group_scores[4] != 0)) {
+            
+            sumScore = group_scores[0] + group_scores[1] + group_scores[2] + group_scores[3] + group_scores[4];
+            modScore = sumScore%3;
+          
+            showSum(sumScore);
+            showMod(modScore);
+            
             if (modScore == 0) {
               modCountsZero();
             }
 
-            else if (modCounts ==1) {
+            else if (modScore ==1) {
               modCountsOne();
             }
 
             else {
               modCountsTwo();
+            }
+
+            while (1) {
+              if (Serial2.available()) {
+                Serial2.print((char) (missionHash + 1 + 84));
+                }
+              delay(500);
             }
           }
          
@@ -551,7 +559,6 @@ void mission5() {
   //  Serial.println();
 }
 
-
 float microsecondsToInches(long microseconds) {
   // The speed of sound is about 1125 ft/s
   // Sound takes about 74.074 us to travel 1 in
@@ -705,8 +712,31 @@ void modCountsZero(){
 
 //MODCOUNTSONE: LIGHT SHOW
 void modCountsOne(){
-  set_RGB(0,200,0); delay(500);
-  set_RGB(100,0,200); delay(500);
+  for(int i = 0; i < 500; i++){
+      int x = i % 3;
+
+      switch(x){
+        case 0:
+          analogWrite(r, 0);
+          analogWrite(g, 255);
+          analogWrite(b, 255);
+          delay(100);
+          break;
+        case 1:
+          analogWrite(r, 255);
+          analogWrite(g, 0);
+          analogWrite(b, 255);
+          delay(100);
+          break;
+        case 2:
+          analogWrite(r, 255);
+          analogWrite(g, 255);
+          analogWrite(b, 0);
+          delay(100);
+          break;
+      }
+     
+    }
 }
 
 //MODCOUNTSTWO: Dance
@@ -716,7 +746,7 @@ void modCountsTwo(){
 
 //SONG FOR PIEZOSPEAKER 
 void play_song() {
-  for(long k=0; k<num; k++){
+   for(long k=0; k<num; k++){
     mySerial.write(durs[k]); mySerial.write(octs[k]); mySerial.write(notes[k]);
     int len = 214 - durs[k];
     float del = 2000 / pow(2, len);
@@ -726,5 +756,76 @@ void play_song() {
   
 //SERVO CODE FOR DANCE
 void bot_dance() {
-  return;
+  servoLeft.attach(11);
+  servoRight.attach(12);
+
+  danceBackward();
+  delay(1500);
+//  danceForward();
+//  delay(500);
+  
+  // 360 SPINNNNNNN
+  servoLeft.writeMicroseconds(1700);
+  servoRight.writeMicroseconds(1600);
+  delay(3000);
+  
+  Serial.println("SHIMMY");
+  danceForwardShimmy();
+  danceBackwardShimmy();
+  danceForwardShimmy();
+  danceBackwardShimmy();
+  danceForwardShimmy();
+  danceBackwardShimmy();
+  danceForwardShimmy();
+  danceBackwardShimmy();
+  danceForwardShimmy();
+  // 90 SPINNNNNNN
+  servoLeft.writeMicroseconds(1700);
+  servoRight.writeMicroseconds(1600);
+  delay(1000);
+  danceBackwardShimmy();
+  danceForwardShimmy();
+  danceBackwardShimmy();
+  danceForwardShimmy();
+  danceBackwardShimmy();
+  danceForwardShimmy();
+  danceBackwardShimmy();
+  danceForwardShimmy();
+  danceBackwardShimmy();
+  
+  servoLeft.detach();
+  servoRight.detach();
+}
+void danceBackward() {
+  servoLeft.writeMicroseconds(1500 - 50);
+  servoRight.writeMicroseconds(1500+50);
+
+  }
+void danceForwardShimmy() {
+  danceQuickLeft();
+  delay(300);
+  danceQuickRight();
+  delay(300);
+}
+void danceQuickLeft() {
+  servoLeft.writeMicroseconds(1500 );
+  servoRight.writeMicroseconds(1500 - 250);
+}
+void danceQuickRight() {
+  servoLeft.writeMicroseconds(1500 + 250);
+  servoRight.writeMicroseconds(1500);
+}
+void danceBackwardShimmy() {
+  danceBQLeft();
+  delay(300);
+  danceBQRight();
+  delay(300);
+}
+void danceBQLeft() {
+  servoLeft.writeMicroseconds(1500 - 250);
+  servoRight.writeMicroseconds(1500);
+}
+void danceBQRight() {
+  servoLeft.writeMicroseconds(1500);
+  servoRight.writeMicroseconds(1500 + 250);
 }
