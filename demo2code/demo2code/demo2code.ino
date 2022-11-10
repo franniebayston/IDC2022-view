@@ -44,12 +44,12 @@ int doPrimary = -1;
 
 // Reading boolean
 int Reading = 0;
+int nonZero = 0;
 
 // Arrays
 int group_scores[] = {0, 0, 0, 0, 0};
 int sumScore = 0;
 int modScore = 0;
-
 int amtCounter = 0;
 
 // SPEAKER SOUND
@@ -90,6 +90,7 @@ void showSum(int);
 void showMod(int);
 
 void lightInd();
+void lightInd2();
 
 void modCountsZero();
 void modCountsOne();
@@ -216,54 +217,33 @@ void loop() {
     case 0: // ON HASHMARK
       currentHash++;
       halt(250);
+      
       while ((currentHash > (totalHash - 1)) && Reading) {
-        
         showScore(5, missionHash + 1); // Print our mission score
-        set_RGB(255, 0, 0); // initialize send
         delay(100);
-        set_RGB(0,0,0);
         
-        if (amtCounter % 100 == 0) {
-          set_RGB(255, 0, 0); // red color when sending our value
+        if ((amtCounter % 10 == 0) && (amtCounter < 81)) {
+          lightInd(); // color when sending our value
+          delay(50);
           if (Serial2.available()) {
             Serial2.print((char) (missionHash + 1 + 84));
           }
-          
-          delay(500);
-          set_RGB(0,0,0);
         }
-        
-        else {
-          
-          if (Serial2.available()) {
-            int rawChar = Serial2.read();
-            set_RGB(100, 100, 100); // some color when reading a value
-            delay(500);
-            set_RGB(0,0,0);
-          
-            int temp_group = getGroupNum(rawChar);
-            int temp_score = getGroupScore(rawChar);
-            showScore(temp_group, temp_score);
-
-            // update to array.
-            group_scores[temp_group] = temp_score;
+        else if (amtCounter >= 81) {
             
-          }
-          // check if sum can be calculated (assumes break works)
-
-         if (amtCounter >= 1000 || (group_scores[0] != 0 && group_scores[1] != 0 && group_scores[2] != 0 && group_scores[3] != 0 && group_scores[4] != 0)) {
-            
-            sumScore = group_scores[0] + group_scores[1] + group_scores[2] + group_scores[3] + group_scores[4];
+            sumScore = (group_scores[0] + group_scores[1] + group_scores[2] + group_scores[3] + missionHash + 1);
             modScore = sumScore%3;
-          
+
             showSum(sumScore);
+            delay(300);
             showMod(modScore);
+            delay(300);
             
             if (modScore == 0) {
               modCountsZero();
             }
 
-            else if (modScore ==1) {
+            else if (modScore == 1) {
               modCountsOne();
             }
 
@@ -272,15 +252,35 @@ void loop() {
             }
 
             while (1) {
-              if (Serial2.available()) {
-                Serial2.print((char) (missionHash + 1 + 84));
-                }
-              delay(500);
+             
+              delay(100);
             }
           }
+        else {
+         
+          if (Serial2.available()) {
+            int rawChar = Serial2.read();
+            delay(100);
+            lightInd2();
+            delay(100);
+          
+            int temp_group = getGroupNum(rawChar);
+            int temp_score = getGroupScore(rawChar);
+            showScore(temp_group, temp_score);
+
+            // update to array.
+            group_scores[temp_group] = temp_score;
+
+           
+            
+          }
+          // check if sum can be calculated (assumes break works)
+
+        
          
          } // after else
-      amtCounter +=1;
+         
+        amtCounter +=1;
       
       }
 
@@ -308,31 +308,33 @@ void loop() {
         analogWrite(b, 255);
         delay(1000);
 
+        // for the first five hashes {0, 1, 2, 3, 4}
         if (currentHash <= (totalHash - 2)) {
           backup_array[currentHash] = distance_in_inches();
           moveForward(200);
         }
-        
+
+        // back to the start {5}
         else if (currentHash == (totalHash - 1)) {
           check_stop(1, 1); // Always True
-
           float smallest = backup_array[0];
-          int missionHash = 0;
 
-          for (int i = 0; i < 6; i++) {
+          missionHash = 1;
+          for (int i = 0; i <= 5; i++) {
             if (backup_array[i] < smallest) {
               smallest = backup_array[i];
-              missionHash = i;
+              missionHash = i + 1;
             }
           }
 
           lightInd();
+          delay(100);
           
           Serial2.print((char) (missionHash + 1 + 84));
           
           delay(500);
           
-          group_scores[4] = (missionHash + 1 + 84);
+          group_scores[4] = (missionHash + 1);
           
         }
         
@@ -535,7 +537,7 @@ void mission5() {
       Serial2.print((char) (missionHash + 1 + 84));
       
       delay(100);
-      group_scores[4] = (missionHash + 1 + 84);
+      group_scores[4] = (missionHash + 1);
 
       delay(500);
       set_RGB(0, 0, 0);
@@ -694,15 +696,27 @@ void showSum(int sum) {
 void lightInd() {
 
   // flash onboard
-  analogWrite(r, 255);
-  analogWrite(g, 0);
-  analogWrite(b, 255);
+  analogWrite(r, 100);
+  analogWrite(g, 150);
+  analogWrite(b, 100);
   delay(500);
   analogWrite(r, 255);
   analogWrite(g, 255);
   analogWrite(b, 255);
   delay(500);
 
+}
+
+void lightInd2() {
+  // flash onboard
+  analogWrite(r, 255);
+  analogWrite(g, 255);
+  analogWrite(b, 0);
+  delay(500);
+  analogWrite(r, 255);
+  analogWrite(g, 255);
+  analogWrite(b, 255);
+  delay(500);
 }
 
 //MODCOUNTSZERO: SONG 
@@ -712,7 +726,7 @@ void modCountsZero(){
 
 //MODCOUNTSONE: LIGHT SHOW
 void modCountsOne(){
-  for(int i = 0; i < 500; i++){
+  for(int i = 0; i < 100; i++){
       int x = i % 3;
 
       switch(x){
