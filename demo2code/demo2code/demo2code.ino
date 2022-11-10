@@ -46,14 +46,19 @@ int doPrimary = -1;
 int Reading = 0;
 
 // Arrays
-int group_scores[] = { -1, -1, -1, -1, -1};
-int printed[] = {0, 0, 0, 0, 1};
+int group_scores[] = {3, 3, 3, 3, 3};
+//int printed[] = {0, 0, 0, 0, 1};
 int groupSum = 0;
 
 int getSum = 0;
 
 int amtCounter = 0;
 
+//SPEAKERSOUND 
+#define num 17
+int durs[num]  = {211, 211, 211, 210, 210, 211, 211, 211, 211, 211, 211, 211, 210, 210, 211, 211, 212};
+int octs[num]  = {215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215, 215};
+int notes[num] = {220, 220, 220, 220, 220, 220, 225, 232, 220, 220, 220, 220, 220, 220, 220, 225, 232};
 
 
 //
@@ -88,17 +93,20 @@ void showMod(int);
 
 void lightInd();
 
+void modCountsZero();
+void modCountsOne();
+void modCountsTwo();
+void play_song();
+
 
 //
 // 2. INITIALIZE SENSORS and SERIAL
 //
 void setup() {
-//  Serial.begin(9600);
+//  Serial.begin(9600); // Start serial monitor to view output on computer
   Serial1.begin(9600);
-  // Initialize Serials (XBee and LCD)
-//  pinMode(TxPin, OUTPUT);
-//  digitalWrite(TxPin, HIGH);
-  mySerial.begin(9600); //start the serial monitor so we can view the output
+
+  mySerial.begin(9600); // LCD setup
   delay(100);
   mySerial.write(12); // clears LCD
   delay(10);
@@ -106,11 +114,9 @@ void setup() {
   delay(10);
   mySerial.write(17);
   delay(10);
-//  
-//  digitalWrite(TxPin, LOW);
-//  delay(100);
 
-  Serial2.begin(9600);
+
+  Serial2.begin(9600); // initialize XBee
   delay(500);
 
   Serial.println("Running diagnostics....\n");
@@ -133,7 +139,7 @@ void setup() {
   // PRIMARY OR BACKUP?? Boolean
   // True or False Wire at pin 5
   //
-  doPrimary = digitalRead(5) ? 1 : 0; // Sets doPriamry to true if pin 5 is wired.
+  doPrimary = digitalRead(5) ? 1 : 0; // Sets doPrimary to true if pin 5 is wired.
   Serial.println("doPrimary boolean set.");
   Serial.println(doPrimary);
 
@@ -157,11 +163,10 @@ void setup() {
     Serial.println("IR Part 2/2 set up.");
     therm.setUnit(TEMP_F); // Set the library's units to Farenheit (sic)
   }
-
-  // BACKUP MISSION
-  // Ultrasound
-  //
-  if (!doPrimary) {
+  else {
+     // BACKUP MISSION
+     // Ultrasound
+     //
     totalHash = 6;
 
     pinMode(37, OUTPUT);
@@ -212,74 +217,63 @@ void loop() {
   {
     case 0: // ON HASHMARK
       currentHash++;
-      //      Serial.println("Current Hash:");
-      //      Serial.println(currentHash);
       halt(250);
-
-      // continuous loop that just focuses on reading the incoming data
-      while ((currentHash > (totalHash - 1)) && (Reading)) {
-        showScore(5, missionHash + 1);
-
+      while ((currentHash > (totalHash - 1)) && Reading) {
+        
+        showScore(5, missionHash + 1); // Print our mission score
         lightInd();
+        
         if (amtCounter % 100 == 0) {
+          
           if (Serial2.available()) {
             Serial2.print((char) (missionHash + 1 + 84));
           }
+          
           delay(500);
         }
-        else {
-
-          if (Serial2.available()) {
-          int rawChar = Serial2.read();
-          set_RGB(255, 0, 255);
-          delay(500);
-          Serial.println(rawChar);
-          
-          // expect a meaningful char to be 65 ASCII or greater
-          
-//          lightInd();
-//          delay(100);
-          int temp_group = getGroupNum(rawChar);
-          int temp_score = getGroupScore(rawChar);
         
-          showScore(temp_group, temp_score);
+        else {
+          
+          if (Serial2.available()) {
+            int rawChar = Serial2.read();
+            set_RGB(255, 0, 255);
+            delay(500);
+          
+            int temp_group = getGroupNum(rawChar);
+            int temp_score = getGroupScore(rawChar);
+            showScore(temp_group, temp_score);
 
-          set_RGB(0,0,0);
-//
-//          // update to array.
-//          group_scores[temp_group] = temp_score;
-//
-//          if ((printed[temp_group] == 0) && (temp_score != -1)) {
-//            showScore(temp_group, temp_score);
-//            printed[temp_group] = 1;
-//          }
-//          
-//        }
-//        // check if sum can be calculated (assumes break works)
-//
-//        for (int i = 0; i <= 4; i++) {
-//          if (group_scores[i] == -1) {
-//            getSum = 0;
-//            groupSum = 0;
-//            break;
-//          }
-//          else {
-//            groupSum += group_scores[i];
-//            getSum = 1;
-//          }
-//        }
-//
-//        if (getSum) {
-//          Reading = 0;
-//          showSum(groupSum);
-//          delay(100);
-//        }
+            // update to array.
+            group_scores[temp_group] = temp_score;
+              
+            sumScore = group_scores[0] + group_scores[1] + group_scores[2] + group_scores[3] + group_scores[4];
+            modScore = sumScore%3;
 
+            showSum(sumScore);
+            showMod(modScore);
 
+            set_RGB(0,0,0);
+            
+          }
+          // check if sum can be calculated (assumes break works)
 
-      }
-      }
+         if (amtCounter == 101) {
+            if (modScore == 0) {
+              modCountsZero();
+            }
+
+            else if (modCounts ==1) {
+              modCountsOne();
+            }
+
+            else {
+              modCountsTwo();
+            }
+          }
+         
+         } // after else
       amtCounter +=1;
+      
       }
 
       //
@@ -310,6 +304,7 @@ void loop() {
           backup_array[currentHash] = distance_in_inches();
           moveForward(200);
         }
+        
         else if (currentHash == (totalHash - 1)) {
           check_stop(1, 1); // Always True
 
@@ -330,11 +325,9 @@ void loop() {
           delay(500);
           
           group_scores[4] = (missionHash + 1 + 84);
-     
-
-          //          Serial.println("Found missionHash.");
-          //          Serial.println(missionHash + 1);
+          
         }
+        
         else {
           //          Serial.print("Backup done. missionHash found.");
         }
@@ -703,4 +696,35 @@ void lightInd() {
   analogWrite(b, 255);
   delay(500);
 
+}
+
+//MODCOUNTSZERO: SONG 
+void modCountsZero(){
+  play_song();
+}
+
+//MODCOUNTSONE: LIGHT SHOW
+void modCountsOne(){
+  set_RGB(0,200,0); delay(500);
+  set_RGB(100,0,200); delay(500);
+}
+
+//MODCOUNTSTWO: Dance
+void modCountsTwo(){
+  bot_dance();
+}
+
+//SONG FOR PIEZOSPEAKER 
+void play_song() {
+  for(long k=0; k<num; k++){
+    mySerial.write(durs[k]); mySerial.write(octs[k]); mySerial.write(notes[k]);
+    int len = 214 - durs[k];
+    float del = 2000 / pow(2, len);
+    delay(int(del*1.1));
+  }
+}
+  
+//SERVO CODE FOR DANCE
+void bot_dance() {
+  return;
 }
