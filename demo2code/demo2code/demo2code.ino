@@ -48,7 +48,8 @@ int nonZero = 0;
 
 // Arrays
 int group_scores[] = {0, 0, 0, 0, 0};
-float backup_array[] = {100000, 100000, 100000, 100000, 100000, 100000};
+float backupMin = 10000;
+int backupHash = -1;
 int sumScore = 0;
 int modScore = 0;
 int amtCounter = 0;
@@ -103,7 +104,7 @@ void play_song();
 // 2. INITIALIZE SENSORS and SERIAL
 //
 void setup() {
-//  Serial.begin(9600); // Start serial monitor to view output on computer
+  Serial.begin(9600); // Start serial monitor to view output on computer
   Serial1.begin(9600);
 
   mySerial.begin(9600); // LCD setup
@@ -149,8 +150,8 @@ void setup() {
   //
   if (doPrimary)
   {
-    pinMode(6, INPUT); // Uses pin 6 as the "switch"
-    totalHash = digitalRead(6) ? 6 : 5;  // Sets the total Hashes to 6 if wired.
+//    pinMode(6, INPUT); // Uses pin 6 as the "switch"
+    totalHash = 5;  // Sets the total Hashes to 6 if wired.
     Serial.println("Hashmark total set up.");
     Serial.println(totalHash);
 
@@ -200,9 +201,7 @@ void loop() {
   int sRight = (qti3 < threshold) ? 1 : 0;
 
   int state = (4 * sLeft) + (2 * sMid) + (1 * sRight);
-  //  Serial.println(state);
-  //  Serial.println();
-
+  
   //
   // FUNCTION CALLS by STATE
   //
@@ -290,7 +289,6 @@ void loop() {
         // Keep moving if not Last Hash
         moveForward(200);
       }
-
       else { // BACKUP
         // flash LED to show we doing stuff
         analogWrite(r, 255);
@@ -304,23 +302,17 @@ void loop() {
 
         // for the first five hashes {0, 1, 2, 3, 4}
         if (currentHash <= (totalHash - 2)) {
-          backup_array[currentHash] = distance_in_inches();
+          float temp = distance_in_inches();
+          if (backupMin > temp) {
+            missionHash = currentHash;
+            backupMin = temp;
+          }
           moveForward(200);
         }
 
         // back to the start {5}
         else if (currentHash == (totalHash - 1)) {
           check_stop(1, 1); // Always True
-          float smallest = backup_array[0];
-
-          missionHash = 0;
-          for (int i = 0; i <= 5; i++) {
-            if (backup_array[i] < smallest) {
-              smallest = backup_array[i];
-              missionHash = i;
-            }
-          }
-
           lightInd();
           delay(100);
           
@@ -329,6 +321,8 @@ void loop() {
           delay(500);
           
           group_scores[4] = (missionHash + 1);
+
+          Serial.println(missionHash + 1);
           
         }
         
@@ -370,7 +364,7 @@ void loop() {
 
 
     case 7:
-      Serial.println("Not on line");
+//      Serial.println("Not on line");
       break;
 
 
@@ -571,13 +565,20 @@ float distance_in_inches() {
   long duration;
   float inches, cm;
   // short LOW pulse to ensure a clean HIGH pulse:
+  
   pinMode(pingPin, OUTPUT);
   digitalWrite(pingPin, LOW);
+  
   // 2 ms HIGH pulse
+  
   delayMicroseconds(2);
+  
   digitalWrite(pingPin, HIGH);
+  
   // back to LOW
+  
   delayMicroseconds(5);
+  
   digitalWrite(pingPin, LOW);
 
   // The same pin is used to read the signal from thPINGe ))):
@@ -591,11 +592,11 @@ float distance_in_inches() {
   inches = microsecondsToInches(duration);
   cm = microsecondsToCentimeters(duration);
 
-  //  Serial.print(inches);
-  //  Serial.print("in, ");
-  //  Serial.print(cm);
-  //  Serial.print("cm");
-  //  Serial.println();
+    Serial.print(inches);
+    Serial.print("in, ");
+    Serial.print(cm);
+    Serial.print("cm");
+    Serial.println();
 
   return inches;
 }
